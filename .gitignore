@@ -1,0 +1,59 @@
+# Secrets - NEVER commit these!
+*.key
+*.pem
+*.p12
+*.pfx
+vault-keys.json
+.env
+.env.local
+.env.*.local
+secrets/
+**/secrets/
+*.secret
+*secret*
+*password*
+*token*
+cosign.key
+
+# Vault
+vault/data/
+vault/logs/
+
+# Kubernetes
+kubeconfig
+*.kubeconfig
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Node
+node_modules/
+npm-debug.log*
+package-lock.json
+yarn.lock
+
+# Docker
+.dockerignore
+
+# CI/CD artifacts
+*.tar.gz
+*.zip
+sbom.json
+trivy-results.*

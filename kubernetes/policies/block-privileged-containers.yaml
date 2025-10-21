@@ -1,0 +1,63 @@
+# OPA Gatekeeper Policy: Block Privileged Containers
+# Prevents container breakout via privileged flag
+
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: k8sblockprivileged
+  annotations:
+    description: "Blocks privileged containers to prevent container escape"
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sBlockPrivileged
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8sblockprivileged
+
+        violation[{"msg": msg}] {
+          input.review.object.kind == "Pod"
+          container := input.review.object.spec.containers[_]
+          container.securityContext.privileged == true
+          msg := sprintf("Container %v cannot run in privileged mode", [container.name])
+        }
+
+        violation[{"msg": msg}] {
+          input.review.object.kind == "Pod"
+          container := input.review.object.spec.containers[_]
+          container.securityContext.allowPrivilegeEscalation == true
+          msg := sprintf("Container %v cannot allow privilege escalation", [container.name])
+        }
+
+        violation[{"msg": msg}] {
+          input.review.object.kind == "Pod"
+          input.review.object.spec.hostNetwork == true
+          msg := "Pod cannot use host network"
+        }
+
+        violation[{"msg": msg}] {
+          input.review.object.kind == "Pod"
+          input.review.object.spec.hostPID == true
+          msg := "Pod cannot use host PID namespace"
+        }
+
+        violation[{"msg": msg}] {
+          input.review.object.kind == "Pod"
+          input.review.object.spec.hostIPC == true
+          msg := "Pod cannot use host IPC namespace"
+        }
+---
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sBlockPrivileged
+metadata:
+  name: block-privileged-containers
+spec:
+  match:
+    kinds:
+      - apiGroups: [""]
+        kinds: ["Pod"]
+    namespaces:
+      - "secure-app"
+      - "production"

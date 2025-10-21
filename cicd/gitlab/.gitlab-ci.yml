@@ -1,0 +1,211 @@
+# GitLab CI/CD Pipeline with Security Best Practices
+
+variables:
+  DOCKER_REGISTRY: "registry.company.com"
+  IMAGE_NAME: "$DOCKER_REGISTRY/secure-app"
+  DOCKER_DRIVER: overlay2
+
+  # Security scanning thresholds
+  TRIVY_SEVERITY: "HIGH,CRITICAL"
+  TRIVY_EXIT_CODE: "1"
+
+stages:
+  - security-scan
+  - build
+  - test
+  - security-test
+  - deploy
+
+# Pre-commit secret scanning
+secret-scan:
+  stage: security-scan
+  image: zricethezav/gitleaks:latest
+  script:
+    - gitleaks detect --source . --verbose --no-git
+  allow_failure: false
+  only:
+    - merge_requests
+    - main
+
+# Build secure Docker image
+build:
+  stage: build
+  image: docker:24-git
+  services:
+    - docker:24-dind
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $DOCKER_REGISTRY
+  script:
+    # Build with secure Dockerfile
+    - docker build
+        --file dockerfiles/secure/Dockerfile
+        --tag $IMAGE_NAME:$CI_COMMIT_SHA
+        --tag $IMAGE_NAME:latest
+        --label "git.commit=$CI_COMMIT_SHA"
+        --label "git.branch=$CI_COMMIT_REF_NAME"
+        --label "build.date=$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+        .
+
+    # Verify non-root user
+    - |
+      USER_ID=$(docker run --rm $IMAGE_NAME:$CI_COMMIT_SHA id -u)
+      if [ "$USER_ID" = "0" ]; then
+        echo "ERROR: Container running as root (UID 0)"
+        exit 1
+      fi
+      echo "✅ Container running as UID: $USER_ID"
+
+    # Push image
+    - docker push $IMAGE_NAME:$CI_COMMIT_SHA
+    - docker push $IMAGE_NAME:latest
+  only:
+    - main
+    - merge_requests
+
+# Vulnerability scanning with Trivy
+trivy-scan:
+  stage: security-test
+  image: aquasec/trivy:latest
+  script:
+    # Scan for vulnerabilities
+    - trivy image
+        --severity $TRIVY_SEVERITY
+        --exit-code $TRIVY_EXIT_CODE
+        --no-progress
+        $IMAGE_NAME:$CI_COMMIT_SHA
+
+    # Generate SBOM
+    - trivy image
+        --format cyclonedx
+        --output sbom.json
+        $IMAGE_NAME:$CI_COMMIT_SHA
+  artifacts:
+    reports:
+      cyclonedx: sbom.json
+    paths:
+      - sbom.json
+    expire_in: 30 days
+  dependencies:
+    - build
+  only:
+    - main
+    - merge_requests
+
+# Container structure test
+container-structure-test:
+  stage: security-test
+  image: gcr.io/gcp-runtimes/container-structure-test:latest
+  script:
+    - |
+      cat > test-config.yaml <<EOF
+      schemaVersion: "2.0.0"
+
+      fileExistenceTests:
+        - name: 'Secrets directory exists'
+          path: '/run/secrets'
+          shouldExist: true
+          permissions: '-rwx------'
+
+      fileContentTests:
+        - name: 'Non-root user'
+          path: '/etc/passwd'
+          expectedContents: ['appuser:x:1001:1001']
+
+      metadataTest:
+        user: "1001"
+        exposedPorts: ["8080"]
+      EOF
+
+    - container-structure-test test
+        --image $IMAGE_NAME:$CI_COMMIT_SHA
+        --config test-config.yaml
+  dependencies:
+    - build
+  only:
+    - main
+    - merge_requests
+
+# Sign image with Cosign
+sign-image:
+  stage: security-test
+  image: gcr.io/projectsigstore/cosign:latest
+  before_script:
+    - echo "$COSIGN_PRIVATE_KEY" > cosign.key
+    - echo "$COSIGN_PASSWORD" | cosign login $DOCKER_REGISTRY
+  script:
+    - echo "$COSIGN_PASSWORD" | cosign sign
+        --key cosign.key
+        $IMAGE_NAME:$CI_COMMIT_SHA
+
+    - cosign verify
+        --key cosign.pub
+        $IMAGE_NAME:$CI_COMMIT_SHA
+  after_script:
+    - rm -f cosign.key
+  dependencies:
+    - build
+    - trivy-scan
+  only:
+    - main
+
+# Deploy to staging (automated)
+deploy-staging:
+  stage: deploy
+  image: bitnami/kubectl:latest
+  environment:
+    name: staging
+    url: https://staging.company.com
+  before_script:
+    - kubectl config use-context staging
+  script:
+    # Update image tag in GitOps repo
+    - |
+      git clone https://oauth2:$GITOPS_TOKEN@gitlab.com/company/gitops.git
+      cd gitops
+      yq eval ".spec.template.spec.containers[0].image = \"$IMAGE_NAME:$CI_COMMIT_SHA\"" \
+        -i overlays/staging/deployment.yaml
+      git config user.email "ci@company.com"
+      git config user.name "GitLab CI"
+      git add overlays/staging/deployment.yaml
+      git commit -m "Update staging to $CI_COMMIT_SHA"
+      git push origin main
+
+    - echo "✅ GitOps repository updated. ArgoCD will sync changes."
+  dependencies:
+    - sign-image
+  only:
+    - main
+
+# Deploy to production (manual)
+deploy-production:
+  stage: deploy
+  image: bitnami/kubectl:latest
+  environment:
+    name: production
+    url: https://app.company.com
+  before_script:
+    - kubectl config use-context production
+  script:
+    # Verify image is signed
+    - cosign verify
+        --key cosign.pub
+        $IMAGE_NAME:$CI_COMMIT_SHA
+
+    # Update GitOps repo for production
+    - |
+      git clone https://oauth2:$GITOPS_TOKEN@gitlab.com/company/gitops.git
+      cd gitops
+      yq eval ".spec.template.spec.containers[0].image = \"$IMAGE_NAME:$CI_COMMIT_SHA\"" \
+        -i overlays/production/deployment.yaml
+      git config user.email "ci@company.com"
+      git config user.name "GitLab CI"
+      git add overlays/production/deployment.yaml
+      git commit -m "Update production to $CI_COMMIT_SHA"
+      git push origin main
+
+    - echo "✅ Production deployment initiated via GitOps"
+  dependencies:
+    - sign-image
+  when: manual  # Require manual approval
+  only:
+    - main

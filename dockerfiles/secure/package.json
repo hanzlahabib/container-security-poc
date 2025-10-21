@@ -1,0 +1,16 @@
+{
+  "name": "secure-container-demo",
+  "version": "1.0.0",
+  "description": "Secure container implementation demo",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "health": "node healthcheck.js"
+  },
+  "keywords": ["security", "docker", "kubernetes"],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

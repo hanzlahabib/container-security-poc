@@ -1,0 +1,63 @@
+# Namespace with Pod Security Standards enforced
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: secure-app
+  labels:
+    # ✅ Enforce restricted Pod Security Standard
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+    environment: production
+---
+# RBAC for developers (read-only)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: developer-role
+  namespace: secure-app
+rules:
+# ✅ Developers can only view resources
+- apiGroups: [""]
+  resources: ["pods", "pods/log", "pods/status", "services", "configmaps"]
+  verbs: ["get", "list", "watch"]
+# ❌ NO create, update, delete, patch permissions
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: developers
+  namespace: secure-app
+subjects:
+- kind: Group
+  name: developers
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: Role
+  name: developer-role
+  apiGroup: rbac.authorization.k8s.io
+---
+# RBAC for platform team (full access with audit)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: platform-admin-role
+  namespace: secure-app
+rules:
+- apiGroups: ["*"]
+  resources: ["*"]
+  verbs: ["*"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: platform-admins
+  namespace: secure-app
+subjects:
+- kind: Group
+  name: platform-team
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: Role
+  name: platform-admin-role
+  apiGroup: rbac.authorization.k8s.io

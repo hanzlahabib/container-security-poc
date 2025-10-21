@@ -1,0 +1,146 @@
+# ✅ SECURE DEPLOYMENT - Production Ready
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: secure-app
+  namespace: secure-app
+  labels:
+    app: secure-app
+    version: v1.0.0
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: secure-app
+  template:
+    metadata:
+      labels:
+        app: secure-app
+        version: v1.0.0
+      annotations:
+        # ✅ AppArmor profile for additional security
+        container.apparmor.security.beta.kubernetes.io/app: runtime/default
+    spec:
+      # ✅ Service account with minimal permissions
+      serviceAccountName: secure-app-sa
+      automountServiceAccountToken: false  # Don't mount unless needed
+
+      # ✅ Security context at pod level
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
+        fsGroup: 1001
+        seccompProfile:
+          type: RuntimeDefault
+
+      containers:
+      - name: app
+        image: myregistry.com/secure-app:v1.0.0
+        imagePullPolicy: Always
+
+        # ✅ Container-level security context
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1001
+          runAsGroup: 1001
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+              - ALL  # Drop all Linux capabilities
+
+        # ✅ Resource limits (prevent resource exhaustion)
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+
+        # ✅ Health checks
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 30
+          timeoutSeconds: 3
+          failureThreshold: 3
+
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 3
+
+        # ✅ Secrets mounted as volumes (NOT environment variables)
+        volumeMounts:
+        - name: secrets
+          mountPath: /run/secrets
+          readOnly: true
+        - name: tmp
+          mountPath: /tmp
+        - name: cache
+          mountPath: /app/.cache
+
+      volumes:
+      # ✅ Secrets from Kubernetes Secret
+      - name: secrets
+        secret:
+          secretName: app-secrets
+          defaultMode: 0400  # Read-only by owner
+      # ✅ Writable volumes for non-root filesystem
+      - name: tmp
+        emptyDir: {}
+      - name: cache
+        emptyDir: {}
+
+      # ✅ Anti-affinity for high availability
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - secure-app
+              topologyKey: kubernetes.io/hostname
+---
+# Service Account with minimal permissions
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: secure-app-sa
+  namespace: secure-app
+automountServiceAccountToken: false
+---
+# Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: secure-app
+  namespace: secure-app
+  labels:
+    app: secure-app
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8080
+    protocol: TCP
+    name: http
+  selector:
+    app: secure-app
