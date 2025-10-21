@@ -44,7 +44,11 @@ test-insecure: build-insecure ## Test insecure container (shows vulnerabilities)
 	@docker run -d --name insecure-test insecure-app:latest || true
 	@sleep 2
 
-	@echo "\n$(RED)🚨 ATTACK 1: Check if running as ROOT$(NC)"
+	@echo "\n$(YELLOW)📋 Container Logs (what's running inside):$(NC)"
+	@docker logs insecure-test
+	@echo ""
+
+	@echo "$(RED)🚨 ATTACK 1: Check if running as ROOT$(NC)"
 	@docker exec insecure-test id
 
 	@echo "\n$(RED)🚨 ATTACK 2: Stealing secrets from environment$(NC)"
@@ -79,7 +83,11 @@ test-secure: build-secure ## Test secure container (shows protections)
 		secure-app:latest || true
 	@sleep 3
 
-	@echo "\n$(GREEN)✅ TEST 1: Check user (should be non-root)$(NC)"
+	@echo "\n$(YELLOW)📋 Container Logs (what's running inside):$(NC)"
+	@docker logs secure-test
+	@echo ""
+
+	@echo "$(GREEN)✅ TEST 1: Check user (should be non-root)$(NC)"
 	@docker exec secure-test id
 
 	@echo "\n$(GREEN)✅ TEST 2: Try to steal secrets from environment$(NC)"
