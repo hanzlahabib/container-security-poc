@@ -24,16 +24,13 @@ RUN mkdir -p /app /run/secrets && \
 
 WORKDIR /app
 
-# ✅ Copy files as non-root user
-COPY --chown=appuser:appuser package*.json ./
+# ✅ Copy application code as non-root user
+COPY --chown=appuser:appuser package.json ./
+COPY --chown=appuser:appuser server.js ./
+COPY --chown=appuser:appuser healthcheck.js ./
 
-# ✅ Install dependencies as non-root
+# ✅ Switch to non-root user
 USER appuser
-RUN npm ci --only=production && \
-    npm cache clean --force
-
-# ✅ Copy application code
-COPY --chown=appuser:appuser . .
 
 # ✅ NO secrets in image (read from /run/secrets at runtime)
 # Secrets will be mounted as volumes
