@@ -237,14 +237,30 @@ kubernetes-test: ## Test Kubernetes security policies (requires cluster)
 	@echo "$(YELLOW)Testing Kubernetes security policies...$(NC)"
 	@cd scripts && chmod +x security-test.sh && ./security-test.sh
 
+install-sops: ## Install SOPS and age (requires sudo)
+	@chmod +x scripts/install-sops.sh
+	@./scripts/install-sops.sh
+
 sops-demo: ## Demonstrate SOPS encryption
 	@echo "$(BLUE)=========================================$(NC)"
 	@echo "$(BLUE)   SOPS Encryption Demo$(NC)"
 	@echo "$(BLUE)=========================================$(NC)\n"
-	@echo "See: TESTING-GUIDE.md section 'Test 4: Secret Encryption with SOPS'"
-	@echo "Quick install:"
-	@echo "  curl -LO https://github.com/FiloSottile/age/releases/download/v1.1.1/age-v1.1.1-linux-amd64.tar.gz"
-	@echo "  curl -LO https://github.com/getsops/sops/releases/download/v3.8.1/sops-v3.8.1.linux.amd64"
+	@if ! command -v age >/dev/null 2>&1 || ! command -v sops >/dev/null 2>&1; then \
+		echo "$(YELLOW)⚠️  SOPS or age not installed$(NC)\n"; \
+		echo "Quick install:"; \
+		echo "  wget https://github.com/FiloSottile/age/releases/download/v1.1.1/age-v1.1.1-linux-amd64.tar.gz"; \
+		echo "  tar xf age-v1.1.1-linux-amd64.tar.gz"; \
+		echo "  sudo mv age/age age/age-keygen /usr/local/bin/"; \
+		echo ""; \
+		echo "  wget https://github.com/getsops/sops/releases/download/v3.8.1/sops-v3.8.1.linux.amd64"; \
+		echo "  chmod +x sops-v3.8.1.linux.amd64"; \
+		echo "  sudo mv sops-v3.8.1.linux.amd64 /usr/local/bin/sops"; \
+		echo ""; \
+		echo "Then run: $(GREEN)make sops-demo$(NC)"; \
+		exit 0; \
+	fi
+	@chmod +x scripts/sops-demo.sh
+	@./scripts/sops-demo.sh
 
 ##@ Repository
 repo-status: ## Show repository info
