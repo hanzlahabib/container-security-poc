@@ -1,6 +1,6 @@
 # Quick Start - Team Demo Guide
 
-**Repository:** https://github.com/hanzlahabib/container-security-demo
+**Repository:** https://github.com/hanzlahabib/container-security-poc
 
 ---
 
@@ -160,7 +160,7 @@ make testing-guide     # Full testing docs
 
 ## 🔗 Links
 
-- **GitHub:** https://github.com/hanzlahabib/container-security-demo
+- **GitHub:** https://github.com/hanzlahabib/container-security-poc
 - **Full Docs:** `README.md`
 - **Testing Guide:** `TESTING-GUIDE.md`
 - **Setup Guide:** `SETUP.md`

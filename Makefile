@@ -238,7 +238,7 @@ quick-present: quick-demo ## Quick 2-minute presentation
 	@echo "\n$(GREEN)Quick demo complete! Show team:$(NC)"
 	@echo "1. Insecure: Secrets stolen from env vars"
 	@echo "2. Secure: Secrets protected in /run/secrets"
-	@echo "3. GitHub: https://github.com/hanzlahabib/container-security-demo"
+	@echo "3. GitHub: https://github.com/hanzlahabib/container-security-poc"
 
 ##@ Continuous Demo (For Screen Sharing)
 watch-insecure: ## Watch insecure container logs (for demo)
@@ -276,7 +276,7 @@ sops-demo: ## Demonstrate SOPS encryption
 
 ##@ Repository
 repo-status: ## Show repository info
-	@echo "$(BLUE)Repository: https://github.com/hanzlahabib/container-security-demo$(NC)"
+	@echo "$(BLUE)Repository: https://github.com/hanzlahabib/container-security-poc$(NC)"
 	@git remote -v
 	@echo ""
 	@git log --oneline -5
