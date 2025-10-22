@@ -268,22 +268,11 @@ sops-demo: ## Demonstrate SOPS encryption
 	@echo "$(BLUE)   SOPS Encryption Demo$(NC)"
 	@echo "$(BLUE)=========================================$(NC)\n"
 	@if ! command -v age >/dev/null 2>&1 || ! command -v sops >/dev/null 2>&1; then \
-		echo "$(YELLOW)⚠️  SOPS or age not installed$(NC)\n"; \
-		echo "$(GREEN)Easy install:$(NC)"; \
-		echo "  $(GREEN)make install-sops$(NC)\n"; \
-		echo "Or manual install:"; \
-		echo "  wget https://github.com/FiloSottile/age/releases/download/v1.1.1/age-v1.1.1-linux-amd64.tar.gz"; \
-		echo "  tar xf age-v1.1.1-linux-amd64.tar.gz"; \
-		echo "  sudo mv age/age age/age-keygen /usr/local/bin/"; \
-		echo ""; \
-		echo "  wget https://github.com/getsops/sops/releases/download/v3.8.1/sops-v3.8.1.linux.amd64"; \
-		echo "  chmod +x sops-v3.8.1.linux.amd64"; \
-		echo "  sudo mv sops-v3.8.1.linux.amd64 /usr/local/bin/sops"; \
-		echo ""; \
-		echo "Then run: $(GREEN)make sops-demo$(NC)"; \
-		exit 1; \
-	fi; \
-	chmod +x scripts/sops-demo.sh && ./scripts/sops-demo.sh
+		echo "$(YELLOW)⚠️  SOPS or age not installed$(NC)"; \
+		echo "$(GREEN)Installing automatically...$(NC)\n"; \
+		$(MAKE) install-sops; \
+	fi
+	@chmod +x scripts/sops-demo.sh && ./scripts/sops-demo.sh
 
 ##@ Repository
 repo-status: ## Show repository info
