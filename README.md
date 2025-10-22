@@ -88,33 +88,62 @@ container-security-poc/
 
 ### Prerequisites
 - Docker 24+
-- Kubernetes 1.28+
-- kubectl
-- Helm 3+
+- make
 - Git
 
 ### 1. Clone Repository
 ```bash
-git clone https://github.com/yourusername/container-security-poc.git
+git clone https://github.com/hanzlahabib/container-security-poc.git
 cd container-security-poc
 ```
 
-### 2. Build Secure Docker Image
+### 2. See All Available Commands
 ```bash
-cd dockerfiles/secure
-docker build -t secure-app:latest .
-
-# Verify non-root user
-docker run --rm secure-app:latest id
-# Output: uid=1001(appuser) gid=1001(appuser)
+make help
 ```
 
-### 3. Deploy to Kubernetes
+### 3. Run Complete Demo (5 minutes)
+```bash
+make demo-all
+```
+This will:
+- Build both insecure and secure containers
+- Demonstrate vulnerabilities
+- Show security protections
+- Display comparison summary
+
+### 4. Quick Commands
+
+#### Build Containers
+```bash
+make build-all        # Build both insecure and secure images
+make build-secure     # Build only secure image
+make build-insecure   # Build only insecure image
+```
+
+#### Run Security Demos
+```bash
+make test-secure      # Test secure container protections
+make test-insecure    # See vulnerabilities in action
+make attack-all       # Run all attack scenarios
+make sops-demo        # SOPS encryption demonstration
+```
+
+#### Team Presentation
+```bash
+make present          # Full 5-minute presentation
+make quick-present    # Quick 2-minute demo
+make summary          # Show security comparison table
+```
+
+### 5. Advanced Setup (Optional)
+
+#### Kubernetes Deployment
 ```bash
 # Create namespace with Pod Security Standards
 kubectl apply -f kubernetes/manifests/01-namespace.yaml
 
-# Deploy Gatekeeper policies (optional but recommended)
+# Deploy Gatekeeper policies
 kubectl apply -f kubernetes/policies/
 
 # Deploy application
@@ -122,29 +151,17 @@ kubectl apply -f kubernetes/manifests/02-secure-deployment.yaml
 kubectl apply -f kubernetes/manifests/03-network-policy.yaml
 ```
 
-### 4. Setup Vault (On-Premises)
+#### Setup Vault (On-Premises)
 ```bash
+make install-sops     # Install SOPS and age tools
 cd vault
 chmod +x setup-vault.sh
 ./setup-vault.sh
-
-# Follow the script output to save unseal keys securely!
 ```
 
-### 5. Install External Secrets Operator
+#### Kubernetes Security Tests
 ```bash
-helm repo add external-secrets https://charts.external-secrets.io
-helm install external-secrets external-secrets/external-secrets -n external-secrets --create-namespace
-
-# Apply ESO configuration
-kubectl apply -f kubernetes/secrets/external-secrets-operator.yaml
-```
-
-### 6. Run Security Tests
-```bash
-cd scripts
-chmod +x security-test.sh
-./security-test.sh
+make kubernetes-test  # Run Kubernetes security validation
 ```
 
 ---
@@ -176,9 +193,7 @@ chmod +x security-test.sh
 
 ### Volume Mount Privilege Escalation (PDO Incident)
 ```bash
-cd attack-scenarios
-chmod +x 01-volume-mount-attack.sh
-./01-volume-mount-attack.sh
+make attack-volume
 ```
 
 **What it demonstrates:**
@@ -195,9 +210,7 @@ chmod +x 01-volume-mount-attack.sh
 
 ### Secret Exposure via Environment Variables
 ```bash
-cd attack-scenarios
-chmod +x 02-env-var-secret-exposure.sh
-./02-env-var-secret-exposure.sh
+make attack-secrets
 ```
 
 **What it demonstrates:**
@@ -209,6 +222,11 @@ chmod +x 02-env-var-secret-exposure.sh
 - Mount secrets as read-only volumes at `/run/secrets`
 - Use Kubernetes Secrets + External Secrets Operator
 - Never use ENV for secrets
+
+### Run All Attack Scenarios
+```bash
+make attack-all
+```
 
 ---
 
@@ -312,12 +330,31 @@ chmod +x 02-env-var-secret-exposure.sh
 
 ## 🧪 Testing
 
-### Run All Security Tests
+### Quick Testing Commands
 ```bash
+make demo-all         # Complete demo with all tests
+make quick-demo       # Quick 2-minute demo
+make compare          # Side-by-side security comparison
+make summary          # Show comparison summary
+```
+
+### Attack & Security Tests
+```bash
+make test-insecure    # Test insecure container vulnerabilities
+make test-secure      # Test secure container protections
+make attack-all       # Run all attack scenarios
+make sops-demo        # Test SOPS encryption
+```
+
+### Advanced Kubernetes Tests
+```bash
+make kubernetes-test  # Run Kubernetes security validation
+
+# Or run script directly:
 ./scripts/security-test.sh
 ```
 
-### Individual Tests
+### Individual Kubernetes Tests
 ```bash
 # Test Pod Security Standards
 kubectl auth can-i create pods --as=system:serviceaccount:default:developer -n secure-app
