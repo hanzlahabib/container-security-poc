@@ -16,18 +16,40 @@ help: ## Display this help
 	@awk 'BEGIN {FS = ":.*##"; printf "\n"} /^[a-zA-Z_-]+:.*?##/ { printf "  $(GREEN)%-20s$(NC) %s\n", $$1, $$2 } /^##@/ { printf "\n$(YELLOW)%s$(NC)\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
 	@echo ""
 
+##@ System
+check-docker: ## Check and fix Docker if needed (internal)
+	@if ! docker ps >/dev/null 2>&1; then \
+		echo "$(RED)✗ Docker is not running$(NC)"; \
+		echo "Please start Docker Desktop or Docker daemon"; \
+		exit 1; \
+	fi
+	@if ! test -d ~/.docker/contexts 2>/dev/null || ! test -r ~/.docker/contexts/meta 2>/dev/null; then \
+		echo "$(YELLOW)⚠️  Fixing Docker contexts...$(NC)"; \
+		sudo rm -rf ~/.docker/contexts 2>/dev/null || true; \
+		mkdir -p ~/.docker/contexts 2>/dev/null || true; \
+		echo "$(GREEN)✓ Docker contexts fixed$(NC)"; \
+	fi
+
+fix-docker: ## Fix Docker metadata corruption (WSL2 issue)
+	@echo "$(YELLOW)Fixing Docker contexts...$(NC)"
+	@sudo rm -rf ~/.docker/contexts 2>/dev/null || true
+	@mkdir -p ~/.docker/contexts
+	@docker context ls >/dev/null 2>&1 && echo "$(GREEN)✓ Docker fixed successfully$(NC)" || echo "$(RED)✗ Docker still has issues$(NC)"
+	@echo ""
+	@echo "Test with: $(GREEN)docker ps$(NC)"
+
 ##@ Quick Start
 demo-all: clean build-insecure test-insecure build-secure test-secure summary ## Run complete security demo (5 min)
 
 quick-demo: clean test-insecure test-secure summary ## Quick demo (no rebuild, 2 min)
 
 ##@ Build Images
-build-insecure: ## Build insecure Docker image
+build-insecure: check-docker ## Build insecure Docker image
 	@echo "$(RED)Building INSECURE image...$(NC)"
 	@cd dockerfiles/insecure && docker build -t insecure-app:latest .
 	@echo "$(GREEN)✓ Insecure image built$(NC)\n"
 
-build-secure: ## Build secure Docker image
+build-secure: check-docker ## Build secure Docker image
 	@echo "$(GREEN)Building SECURE image...$(NC)"
 	@cd dockerfiles/secure && docker build -t secure-app:latest .
 	@echo "$(GREEN)✓ Secure image built$(NC)\n"
